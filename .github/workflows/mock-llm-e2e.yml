@@ -47,7 +47,13 @@ jobs:
 
   mock-llm-e2e:
     needs: detect-pr-changes
-    if: github.event_name != 'pull_request' || needs.detect-pr-changes.outputs.should_run == 'true'
+    # The pinned Triage mirror uses the core CI suite for demo validation. Keep
+    # this upstream-owned full E2E workflow from producing unrelated mirror
+    # failures while preserving it unchanged for OpenHands/OpenHands.
+    if: >-
+      github.repository == 'OpenHands/OpenHands' &&
+      (github.event_name != 'pull_request' ||
+       needs.detect-pr-changes.outputs.should_run == 'true')
     runs-on: ubuntu-24.04
     # Full-suite runs can spend several minutes on dependency, browser, uv,
     # and frontend setup before Playwright starts. Keep Playwright's own

@@ -88,15 +88,16 @@ jobs:
     # pull_request: skip fork PRs (no GHCR push).
     # workflow_dispatch: always run.
     if: >-
-      (github.event_name == 'workflow_dispatch' ||
-       (github.event_name == 'workflow_run' &&
-        github.event.workflow_run.conclusion == 'success' &&
-        (github.event.workflow_run.head_branch == 'main' ||
-         github.event.workflow_run.head_branch == 'master')) ||
-       (github.event_name == 'pull_request' &&
-        !github.event.pull_request.head.repo.fork)) &&
-      (github.event_name != 'pull_request' ||
-       needs.detect-pr-changes.outputs.should_run == 'true')
+      github.repository == 'OpenHands/OpenHands' &&
+      ((github.event_name == 'workflow_dispatch' ||
+        (github.event_name == 'workflow_run' &&
+         github.event.workflow_run.conclusion == 'success' &&
+         (github.event.workflow_run.head_branch == 'main' ||
+          github.event.workflow_run.head_branch == 'master')) ||
+        (github.event_name == 'pull_request' &&
+         !github.event.pull_request.head.repo.fork)) &&
+       (github.event_name != 'pull_request' ||
+        needs.detect-pr-changes.outputs.should_run == 'true'))
     runs-on: ubuntu-24.04
     # Give the 20-minute Playwright test budget enough room for setup and reporting.
     timeout-minutes: 25
