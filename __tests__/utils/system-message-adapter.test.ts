@@ -74,4 +74,23 @@ describe("adaptSystemMessage", () => {
     expect(result?.content).not.toContain("super-secret-value");
     expect(result?.content).toContain("MY_API_KEY=<secret-hidden>");
   });
+
+  it("should redact custom secret values in truncated dynamic_context", () => {
+    const events: EventState["events"] = [
+      {
+        id: "v1-id",
+        timestamp: "2025-12-30T12:00:00Z",
+        source: "agent",
+        system_prompt: { type: "text", text: "v1 prompt" },
+        tools: [],
+        dynamic_context: {
+          type: "text",
+          text: "<CUSTOM_SECRETS>\nMY_API_KEY=triage-demo-secret-value",
+        },
+      },
+    ];
+    const result = adaptSystemMessage(events);
+    expect(result?.content).not.toContain("triage-demo-secret-value");
+    expect(result?.content).toContain("MY_API_KEY=<secret-hidden>");
+  });
 });

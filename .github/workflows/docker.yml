@@ -44,12 +44,15 @@ jobs:
   # ═══════════════════════════════════════════════════════════════════════════
   build-and-push-image:
     name: Build & Push (${{ matrix.arch }})
-    # Skip fork PRs — they cannot authenticate to GHCR.
+    # This publishing workflow belongs to the upstream repository. Mirrors do
+    # not own the ghcr.io/openhands namespace and must not attempt to push to it.
+    # Fork PRs are also skipped because they cannot authenticate to GHCR.
     if: >
-      github.event_name == 'push' ||
-      github.event_name == 'workflow_dispatch' ||
-      (github.event_name == 'pull_request' &&
-       !github.event.pull_request.head.repo.fork)
+      github.repository == 'OpenHands/OpenHands' &&
+      (github.event_name == 'push' ||
+       github.event_name == 'workflow_dispatch' ||
+       (github.event_name == 'pull_request' &&
+        !github.event.pull_request.head.repo.fork))
     strategy:
       fail-fast: false
       matrix:
@@ -253,10 +256,11 @@ jobs:
     name: Merge Multi-Arch Manifests
     needs: build-and-push-image
     if: >
-      github.event_name == 'push' ||
-      github.event_name == 'workflow_dispatch' ||
-      (github.event_name == 'pull_request' &&
-       !github.event.pull_request.head.repo.fork)
+      github.repository == 'OpenHands/OpenHands' &&
+      (github.event_name == 'push' ||
+       github.event_name == 'workflow_dispatch' ||
+       (github.event_name == 'pull_request' &&
+        !github.event.pull_request.head.repo.fork))
     runs-on: ubuntu-24.04
     steps:
       - name: Download build info artifacts
