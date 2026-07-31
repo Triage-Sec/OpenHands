@@ -11,6 +11,7 @@ import {
 import { getAgentServerClientOptions } from "./agent-server-client-options";
 import { isAgentServerToolAvailable } from "./agent-server-compatibility";
 import { getAgentServerWorkingDir } from "./agent-server-config";
+import { cacheSecretLookupsInAgentContext } from "./agent-context-secret-cache";
 import { getEffectiveLocalBackend } from "./backend-registry/active-store";
 import { buildAuthHeaders } from "./backend-registry/auth";
 import {
@@ -34,6 +35,11 @@ import {
   LEGACY_CANVAS_UI_TOOL_NAME,
   type ClientToolSpec,
 } from "./canvas-ui-client-tool";
+import {
+  buildSecretLookupMap,
+  type CustomSecretDescriptor,
+  type LookupSecret,
+} from "./secret-lookup";
 
 export interface DirectConversationInfo {
   id: string;
@@ -882,13 +888,6 @@ function buildConfiguredConversationSettings(options: {
   return payload;
 }
 
-interface LookupSecret {
-  kind: "LookupSecret";
-  url: string;
-  headers?: Record<string, string>;
-  description?: string;
-}
-
 type StartConversationPayload = Record<string, unknown> & {
   // Omitted when launching via ``agent_profile_id`` — the two are mutually
   // exclusive agent sources; the server resolves the profile server-side.
@@ -922,7 +921,7 @@ export interface StartConversationOptions {
   encryptedAgentSettings?: Record<string, SettingsValue>;
   encryptedConversationSettings?: Record<string, SettingsValue>;
   secretsEncrypted?: boolean;
-  customSecrets?: Array<{ name: string; description?: string }>;
+  customSecrets?: CustomSecretDescriptor[];
   // When set, the conversation launches from this AgentProfile (resolved
   // server-side) instead of an inline ``agent_settings`` dump (#3727).
   agentProfileId?: string;
@@ -1069,23 +1068,14 @@ export function buildStartConversationRequest(
   if (options.customSecrets && options.customSecrets.length > 0) {
     const backend = getEffectiveLocalBackend();
     const headers = backend ? buildAuthHeaders(backend) : {};
-
-    const secrets: Record<string, LookupSecret> = {};
-    for (const secret of options.customSecrets) {
-      const lookupSecret: LookupSecret = {
-        kind: "LookupSecret",
-        url: `/api/settings/secrets/${encodeURIComponent(secret.name)}`,
-        description: secret.description,
-      };
-
-      if (Object.keys(headers).length > 0) {
-        lookupSecret.headers = headers;
-      }
-
-      secrets[secret.name] = lookupSecret;
-    }
-
+    const secrets = buildSecretLookupMap(options.customSecrets, headers);
     payload.secrets = secrets;
+    if (payload.agent_settings) {
+      payload.agent_settings.agent_context = cacheSecretLookupsInAgentContext(
+        payload.agent_settings.agent_context,
+        secrets,
+      );
+    }
   }
 
   return payload;
