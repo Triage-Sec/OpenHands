@@ -1086,7 +1086,6 @@ export function buildStartConversationRequest(
         payload.agent_settings,
         {
           secret_lookup_count: Object.keys(secrets).length,
-          secrets,
         },
       );
     }
