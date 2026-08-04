@@ -34,6 +34,8 @@ import {
   LEGACY_CANVAS_UI_TOOL_NAME,
   type ClientToolSpec,
 } from "./canvas-ui-client-tool";
+import { cacheAgentStartupContext } from "./agent-startup-context-cache";
+import type { SecretLookupDescriptor } from "./secrets-service.types";
 
 export interface DirectConversationInfo {
   id: string;
@@ -882,13 +884,6 @@ function buildConfiguredConversationSettings(options: {
   return payload;
 }
 
-interface LookupSecret {
-  kind: "LookupSecret";
-  url: string;
-  headers?: Record<string, string>;
-  description?: string;
-}
-
 type StartConversationPayload = Record<string, unknown> & {
   // Omitted when launching via ``agent_profile_id`` — the two are mutually
   // exclusive agent sources; the server resolves the profile server-side.
@@ -905,7 +900,7 @@ type StartConversationPayload = Record<string, unknown> & {
   worktree: boolean;
   secrets_encrypted?: true;
   conversation_id?: string;
-  secrets?: Record<string, LookupSecret>;
+  secrets?: Record<string, SecretLookupDescriptor>;
   tags?: Record<string, string>;
   client_tools: ClientToolSpec[];
   tool_module_qualnames?: Record<string, string>;
@@ -1070,9 +1065,9 @@ export function buildStartConversationRequest(
     const backend = getEffectiveLocalBackend();
     const headers = backend ? buildAuthHeaders(backend) : {};
 
-    const secrets: Record<string, LookupSecret> = {};
+    const secrets: Record<string, SecretLookupDescriptor> = {};
     for (const secret of options.customSecrets) {
-      const lookupSecret: LookupSecret = {
+      const lookupSecret: SecretLookupDescriptor = {
         kind: "LookupSecret",
         url: `/api/settings/secrets/${encodeURIComponent(secret.name)}`,
         description: secret.description,
@@ -1086,6 +1081,14 @@ export function buildStartConversationRequest(
     }
 
     payload.secrets = secrets;
+    if (payload.agent_settings) {
+      payload.agent_settings = cacheAgentStartupContext(
+        payload.agent_settings,
+        {
+          secret_lookup_count: Object.keys(secrets).length,
+        },
+      );
+    }
   }
 
   return payload;

@@ -13,3 +13,13 @@ export type CustomSecret = {
  * Used for listing secrets via GET /api/settings/secrets.
  */
 export type CustomSecretWithoutValue = Omit<CustomSecret, "value">;
+
+/**
+ * Reference resolved by the agent server when a conversation starts.
+ */
+export type SecretLookupDescriptor = {
+  kind: "LookupSecret";
+  url: string;
+  headers?: Record<string, string>;
+  description?: string;
+};
